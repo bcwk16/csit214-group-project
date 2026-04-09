@@ -1,18 +1,22 @@
+<!DOCTYPE html>
 <html>
-    <head></head>
-    <title>Booking Application</title>
+    <head>
+        <title>Rooms List</title>
+    </head>
+        <body>
+            <h2>Available Rooms</h2>
+            <ul id="roomList"></ul>
 
-    <body>
-        
+            <script>
+                // Load rooms from localStorage
+                let rooms = JSON.parse(localStorage.getItem("rooms")) || [];
+                let roomList = document.getElementById("roomList");
 
-
-        
-        <script>
-
-        </script>
-
-
+                rooms.forEach(room => {
+                let li = document.createElement("li");
+                li.textContent = `${room.name} - Capacity: ${room.capacity}`;
+                roomList.appendChild(li);
+                });
+            </script>
     </body>
-
-
 </html>
