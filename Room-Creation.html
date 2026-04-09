@@ -1,0 +1,58 @@
+<html>
+    <head></head>
+    <title>Create Room</title>
+
+    <body>
+
+        <form>
+            <form id="room_creation">
+            <label>Room Name:</label>
+            <input type="text" id="room_name" required>
+            <br>
+
+            <label>Room Size:</label>
+            <input type="text" id="room_size" required>
+            <br>
+
+            <label>Room Price (Price per Hour):</label>
+            <input type="text" id="room_price" required>
+            <br>
+
+            <label>Time Slot:</label><br>
+            <label>From: </label>
+            <input type="time" id="time_slot_from" required><br>
+            <label>To: </label>
+            <input type="time" id="time_slot_to" required>
+            <br><br>
+
+            <input type="submit" value="Create Room">
+        </form>
+        
+        <script>
+            document.getElementById("room_creation").addEventListener("submit", function(event) {
+                event.preventDefault(); // Prevent form submission
+
+                // Get form values
+                const roomName = document.getElementById("room_name").value;
+                const roomSize = document.getElementById("room_size").value;
+                const roomPrice = document.getElementById("room_price").value;
+                const timeSlotFrom = document.getElementById("time_slot_from").value;
+                const timeSlotTo = document.getElementById("time_slot_to").value;
+
+                // Save to localStorage (acts like temporary database)
+                let rooms = JSON.parse(localStorage.getItem("Home-Page")) || [];
+                rooms.push({ name: roomName, capacity: roomSize, price: roomPrice, timeSlot: `${timeSlotFrom} - ${timeSlotTo}` });
+                localStorage.setItem("rooms", JSON.stringify(rooms));
+
+                // Redirect to another page
+                window.location.href = "Home-Page.html";
+
+            });
+
+        </script>
+
+
+    </body>
+
+
+</html>
