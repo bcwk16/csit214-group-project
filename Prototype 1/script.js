@@ -28,6 +28,7 @@ const DOM = {
   studentBookings: document.getElementById("studentBookings"),
 };
 
+
 // =================== LocalStorage Database ===================
 const database = {
   config: {
@@ -226,6 +227,8 @@ if (DOM.loginForm) {
     }
   });
 }
+
+
 
 // ===================== STAFF =====================
 const updateRooms = () => {
