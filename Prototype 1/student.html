@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Student Dashboard</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <h2>Available Rooms</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Capacity</th>
+          <th>Price</th>
+          <th>Date</th>
+          <th>Slots</th>
+        </tr>
+      </thead>
+      <tbody id="availableRooms"></tbody>
+    </table>
+
+    <h3>Your Bookings</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Room</th>
+          <th>Date</th>
+          <th>Start Time</th>
+          <th>End Time</th>
+          <th>Price</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="studentBookings"></tbody>
+    </table>
+
+    <h3>Wallet</h3>
+    <p>Balance: $<span id="walletBalance"></span></p>
+    <button onclick="database.wallet.deposit()">Deposit $50</button>
+
+    <script src="config.js"></script>
+    <script src="database.js"></script>
+    <script src="script.js"></script>
+  </body>
+</html>

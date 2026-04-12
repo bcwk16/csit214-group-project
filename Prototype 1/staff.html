@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>UOW Room Management</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <h2>UOW Room Management</h2>
+
+    <!-- Link to dedicated room creation page -->
+    <a href="form.html">
+      <button id="openCreateForm">Create Room</button>
+    </a>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Capacity</th>
+          <th>Price</th>
+          <th>Promo</th>
+          <th>Date</th>
+          <th>Start</th>
+          <th>End</th>
+          <th>Status</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="roomTable"></tbody>
+    </table>
+
+    <script src="config.js"></script>
+    <script src="database.js"></script>
+    <script src="script.js"></script>
+  </body>
+</html>

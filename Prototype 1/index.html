@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>UOW Booking System - Login</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <h2>UOW BOOKING SYSTEM</h2>
+    <form id="loginForm">
+      <label for="username">Username:</label>
+      <input type="text" id="username" required />
+
+      <label for="password">Password:</label>
+      <input type="password" id="password" required />
+
+      <label for="role">Role:</label>
+      <select id="role" required>
+        <option value="">Choose role</option>
+        <option value="student">UOW Student</option>
+        <option value="staff">UOW Staff</option>
+      </select>
+
+      <button type="submit">Login</button>
+    </form>
+
+    <script src="config.js"></script>
+    <script src="database.js"></script>
+    <script src="script.js"></script>
+  </body>
+</html>
