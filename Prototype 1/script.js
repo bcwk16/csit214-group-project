@@ -153,6 +153,23 @@ window.addEventListener("storage", (e) => {
     if (DOM.studentBookings) renderStudentBookings();
     if (DOM.walletBalance) database.wallet.render();
   }
+
+  if (e.key === "refundNotification" && e.newValue) {
+    try {
+      const payload = JSON.parse(e.newValue);
+      const currentStudentId = sessionStorage.getItem("currentStudentId");
+      if (
+        payload?.studentIds?.includes(currentStudentId) &&
+        typeof payload.totalAmount === "number"
+      ) {
+        alert(
+          `Your booking for "${payload.roomName}" was cancelled and $${payload.totalAmount} refunded.`,
+        );
+      }
+    } catch (error) {
+      console.error("Failed to parse refund notification:", error);
+    }
+  }
 });
 
 // ===================== UTILS =====================
@@ -258,13 +275,46 @@ const renderRooms = () => {
     DOM.roomTable.innerHTML = database.rooms.map(roomRow).join("");
 };
 
+const notifyRefundedStudents = (roomName, totalAmount, studentIds) => {
+  localStorage.setItem(
+    "refundNotification",
+    JSON.stringify({ roomName, totalAmount, studentIds, timestamp: Date.now() }),
+  );
+};
+
+// Refund all bookings for a room when it's unlaunched
+const refundBookingsForRoom = (roomId) => {
+  let currentBookings = database.get(database.config.keys.bookings) || [];
+  const affectedBookings = currentBookings.filter((b) => b.roomId === roomId);
+  if (!affectedBookings.length) return;
+
+  affectedBookings.forEach((booking) => {
+    const student = database.users.students.find((s) => s.id === booking.studentId);
+    if (student) student.wallet += booking.price;
+  });
+
+  const room = database.rooms.find((r) => r.id === roomId);
+  const totalAmount = affectedBookings.reduce((sum, booking) => sum + booking.price, 0);
+  const studentIds = [...new Set(affectedBookings.map((b) => b.studentId))];
+  notifyRefundedStudents(room?.name || "Room", totalAmount, studentIds);
+
+  const remainingBookings = currentBookings.filter((b) => b.roomId !== roomId);
+  database.bookings = remainingBookings;
+  database.set(database.config.keys.users, database.users);
+  database.set(database.config.keys.bookings, remainingBookings);
+};
+
 document.addEventListener("click", (e) => {
   const { action, index } = e.target.dataset || {};
   if (index === undefined) return;
 
   switch (action) {
     case "toggle":
-      database.rooms[index].status = !database.rooms[index].status;
+      const room = database.rooms[index];
+      room.status = !room.status;
+      if (!room.status) {
+        refundBookingsForRoom(room.id);
+      }
       updateRooms();
       break;
     case "edit":
