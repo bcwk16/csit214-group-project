@@ -163,7 +163,7 @@ window.addEventListener("storage", (e) => {
         typeof payload.totalAmount === "number"
       ) {
         alert(
-          `Your booking for "${payload.roomName}" was cancelled and $${payload.totalAmount} refunded.`,
+          `Your booking for room "${payload.roomName}" was cancelled. $${payload.totalAmount} has been refunded back to your account.`,
         );
       }
     } catch (error) {
@@ -322,7 +322,11 @@ document.addEventListener("click", (e) => {
       window.location.href = "form.html";
       return;
     case "delete":
-      if (confirm("Delete room?")) database.rooms.splice(index, 1);
+      if (confirm("Delete room?")) {
+        const roomToDelete = database.rooms[index];
+        refundBookingsForRoom(roomToDelete.id);
+        database.rooms.splice(index, 1);
+      }
       updateRooms();
       break;
   }
