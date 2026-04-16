@@ -37,7 +37,11 @@
 
     <h3>Wallet</h3>
     <p>Balance: $<span id="walletBalance"></span></p>
-    <button onclick="database.wallet.deposit()">Deposit $50</button>
+    <div id="depositControls" style="display: inline-flex; gap: 8px; align-items: center;">
+      <button data-action="deposit" data-amount="10">Deposit $10</button>
+      <button data-action="deposit" data-amount="25">Deposit $25</button>
+      <button data-action="deposit" data-amount="50">Deposit $50</button>
+    </div>
 
     <script src="script.js"></script>
   </body>

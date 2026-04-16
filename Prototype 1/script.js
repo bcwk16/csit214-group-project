@@ -495,6 +495,15 @@ const renderStudentBookings = () => {
 document.addEventListener("click", (e) => {
   const { action, roomid, slot, index } = e.target.dataset || {};
 
+  if (action === "deposit") {
+    const amount = Number(e.target.dataset.amount || 50);
+    if ([10, 25, 50].includes(amount)) {
+      database.wallet.deposit(amount);
+    } else {
+      alert("Invalid deposit amount.");
+    }
+  }
+
   if (action === "book") {
     const room = database.rooms.find((r) => r.id === roomid);
     if (room) bookRoom(room, slot);
