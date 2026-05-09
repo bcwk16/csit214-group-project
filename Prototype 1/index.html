@@ -8,6 +8,7 @@
   <body>
     <div class="page">
       <h2>UOW BOOKING SYSTEM LOGIN</h2>
+
       <form id="loginForm">
         <label for="username">Username:</label>
         <input type="text" id="username" required />
@@ -21,6 +22,8 @@
           <option value="student">UOW Student</option>
           <option value="staff">UOW Staff</option>
         </select>
+
+        <div id="loginError" class="error" style="display: none"></div>
 
         <button type="submit" class="mt-20">Login</button>
       </form>

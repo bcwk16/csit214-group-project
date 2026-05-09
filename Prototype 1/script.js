@@ -5,6 +5,7 @@ const DOM = {
   role: document.getElementById("role"),
   username: document.getElementById("username"),
   password: document.getElementById("password"),
+  errorDiv: document.getElementById("loginError"),
 
   // Staff Page
   roomTable: document.getElementById("roomTable"),
@@ -189,30 +190,38 @@ const generateSlots = (start, end) => {
 if (DOM.loginForm) {
   DOM.loginForm.addEventListener("submit", (e) => {
     e.preventDefault();
+
+    const errorDiv = DOM.errorDiv;
     const role = DOM.role.value;
     const username = DOM.username.value.trim();
     const password = DOM.password.value.trim();
-    if (!role) return alert("Please select a role.");
 
-    let account =
-      role === "staff"
-        ? username === database.users.staff.username &&
-          password === database.users.staff.password
-          ? database.users.staff
-          : null
-        : database.users.students.find(
-            (s) => s.username === username && s.password === password,
-          );
+    let account = null;
+
+    if (role === "staff") {
+      if (
+        username === database.users.staff.username &&
+        password === database.users.staff.password
+      ) {
+        account = database.users.staff;
+      }
+    } else if (role === "student") {
+      account = database.users.students.find(
+        (s) => s.username === username && s.password === password,
+      );
+    }
 
     if (account) {
       sessionStorage.setItem("currentUserRole", role);
-      if (role === "student")
+      if (role === "student") {
         sessionStorage.setItem("currentStudentId", account.id);
+      }
       window.location.href = database.config.pages[role];
     } else {
-      alert(
-        "Invalid credentials.\nStaff: admin/admin\nStudent: user1/user1 or user2/user2",
-      );
+      if (errorDiv) {
+        errorDiv.innerHTML = "❌ Invalid Credentials!";
+        errorDiv.style.display = "block";
+      }
     }
   });
 }
