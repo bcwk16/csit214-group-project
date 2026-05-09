@@ -154,6 +154,31 @@ const database = {
 };
 database.init();
 
+// ===================== REAL-TIME SYNC =====================
+// Listen for storage changes from other tabs/windows
+window.addEventListener("storage", (e) => {
+  if (e.key === "rooms") {
+    database.rooms = database.get(database.config.keys.rooms);
+    if (DOM.roomTable) renderRooms();
+    if (DOM.roomsContainer) renderAvailableRooms();
+  }
+  if (e.key === "bookings") {
+    database.bookings = database.get(database.config.keys.bookings);
+    if (DOM.studentBookings) renderStudentBookings();
+    if (DOM.roomsContainer) renderAvailableRooms();
+  }
+  if (e.key === "users") {
+    database.users = database.get(database.config.keys.users);
+    if (DOM.walletBalance)
+      DOM.walletBalance.textContent = database.wallet.get();
+    if (DOM.studentBookings) renderStudentBookings();
+  }
+  if (e.key === "promoCodes") {
+    database.promoCodes = database.get(database.config.keys.promoCodes);
+    if (DOM.promoTable) renderPromoCodes();
+  }
+});
+
 // ===================== UTILS =====================
 const getEndTime = (startTime) => {
   let [hour, minute] = startTime.split(":").map(Number);
@@ -170,7 +195,6 @@ const generateSlots = (start, end) => {
   let current = startHour * 60 + startMin;
   let endTotal = endHour * 60 + endMin;
 
-  // If end time is less than or equal to start time, assume next day
   if (endTotal <= current) {
     endTotal += 24 * 60;
   }
@@ -227,6 +251,13 @@ if (DOM.loginForm) {
 }
 
 // ===================== STAFF PAGE =====================
+const staffNameSpan = document.getElementById("staffName");
+if (staffNameSpan) {
+  const staffUsername =
+    sessionStorage.getItem("staffUsername") || database.users.staff.username;
+  staffNameSpan.textContent = staffUsername;
+}
+
 const renderRooms = () => {
   if (!DOM.roomTable) return;
   DOM.roomTable.innerHTML = database.rooms
@@ -422,6 +453,17 @@ if (document.getElementById("promoForm")) {
 }
 
 // ===================== STUDENT PAGE =====================
+const studentNameSpan = document.getElementById("studentName");
+if (studentNameSpan) {
+  const studentId = sessionStorage.getItem("currentStudentId");
+  const student = database.users.students.find((s) => s.id === studentId);
+  if (student) {
+    studentNameSpan.textContent = student.username;
+  } else {
+    studentNameSpan.textContent = "Student";
+  }
+}
+
 const goToCheckout = (room, slot, endTime) => {
   sessionStorage.setItem(
     "checkoutData",
@@ -439,6 +481,9 @@ const goToCheckout = (room, slot, endTime) => {
 
 const renderAvailableRooms = () => {
   if (!DOM.roomsContainer) return;
+
+  // Refresh data from localStorage before rendering
+  database.rooms = database.get(database.config.keys.rooms);
   let bookings = database.get(database.config.keys.bookings) || [];
   let available = database.rooms.filter((r) => r.status);
 
@@ -480,15 +525,22 @@ const renderAvailableRooms = () => {
     .join("");
 
   document.querySelectorAll(".slot-btn:not(.booked)").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      let room = database.rooms.find((r) => r.id === btn.dataset.roomid);
-      if (room) goToCheckout(room, btn.dataset.slot, btn.dataset.endtime);
-    });
+    btn.removeEventListener("click", handleSlotClick);
+    btn.addEventListener("click", handleSlotClick);
   });
+};
+
+const handleSlotClick = (e) => {
+  let btn = e.currentTarget;
+  let room = database.rooms.find((r) => r.id === btn.dataset.roomid);
+  if (room) goToCheckout(room, btn.dataset.slot, btn.dataset.endtime);
 };
 
 const renderStudentBookings = () => {
   if (!DOM.studentBookings) return;
+
+  // Refresh data from localStorage
+  database.bookings = database.get(database.config.keys.bookings);
   let studentId = sessionStorage.getItem("currentStudentId");
   let myBookings = (database.bookings || []).filter(
     (b) => b.studentId === studentId,
@@ -514,24 +566,29 @@ const renderStudentBookings = () => {
     : '<tr><td colspan="8">No bookings yet</td></tr>';
 
   document.querySelectorAll("[data-cancel]").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      let idx = parseInt(btn.dataset.cancel);
-      let allBookings = database.get(database.config.keys.bookings) || [];
-      let booking = allBookings.filter((b) => b.studentId === studentId)[idx];
-      if (booking && confirm("Cancel this booking?")) {
-        let refund = booking.finalPrice || booking.originalPrice;
-        database.set(
-          database.config.keys.bookings,
-          allBookings.filter((b) => b.id !== booking.id),
-        );
-        database.bookings = database.get(database.config.keys.bookings);
-        database.wallet.set(database.wallet.get() + refund);
-        alert(`Cancelled! Refunded $${refund.toFixed(2)}`);
-        renderAvailableRooms();
-        renderStudentBookings();
-      }
-    });
+    btn.removeEventListener("click", handleCancelClick);
+    btn.addEventListener("click", handleCancelClick);
   });
+};
+
+const handleCancelClick = (e) => {
+  let idx = parseInt(e.currentTarget.dataset.cancel);
+  let studentId = sessionStorage.getItem("currentStudentId");
+  let allBookings = database.get(database.config.keys.bookings) || [];
+  let booking = allBookings.filter((b) => b.studentId === studentId)[idx];
+
+  if (booking && confirm("Cancel this booking?")) {
+    let refund = booking.finalPrice || booking.originalPrice;
+    database.set(
+      database.config.keys.bookings,
+      allBookings.filter((b) => b.id !== booking.id),
+    );
+    database.bookings = database.get(database.config.keys.bookings);
+    database.wallet.set(database.wallet.get() + refund);
+    alert(`Cancelled! Refunded $${refund.toFixed(2)}`);
+    renderAvailableRooms();
+    renderStudentBookings();
+  }
 };
 
 // ===================== DEPOSIT PAGE =====================
@@ -577,94 +634,101 @@ if (DOM.confirmBookingBtn) {
       finalPrice = booking.originalPrice;
 
     if (DOM.applyPromoBtn) {
-      DOM.applyPromoBtn.addEventListener("click", () => {
-        let code = DOM.promoCodeInput.value.toUpperCase();
-        let promo = database.promoCodes.find(
-          (p) =>
-            p.code === code &&
-            p.active &&
-            p.validUntil >= new Date().toISOString().split("T")[0],
-        );
-        if (promo) {
-          appliedDiscount = promo.discount;
-          finalPrice =
-            Math.round(
-              booking.originalPrice * (1 - appliedDiscount / 100) * 100,
-            ) / 100;
-          if (DOM.discountPercent)
-            DOM.discountPercent.textContent = appliedDiscount;
-          if (DOM.discountAmount)
-            DOM.discountAmount.textContent = (
-              booking.originalPrice - finalPrice
-            ).toFixed(2);
-          if (DOM.finalPriceEl)
-            DOM.finalPriceEl.textContent = finalPrice.toFixed(2);
-          if (DOM.discountRow) DOM.discountRow.style.display = "block";
-          if (DOM.promoMessage)
-            DOM.promoMessage.innerHTML = `<span class="success">${promo.code} applied! You save $${(booking.originalPrice - finalPrice).toFixed(2)}!</span>`;
-        } else {
-          if (DOM.promoMessage)
-            DOM.promoMessage.innerHTML = `<span class="error">Invalid or expired promo code.</span>`;
-        }
-      });
+      DOM.applyPromoBtn.removeEventListener("click", handleApplyPromo);
+      DOM.applyPromoBtn.addEventListener("click", handleApplyPromo);
+    }
+
+    function handleApplyPromo() {
+      let code = DOM.promoCodeInput.value.toUpperCase();
+      let promo = database.promoCodes.find(
+        (p) =>
+          p.code === code &&
+          p.active &&
+          p.validUntil >= new Date().toISOString().split("T")[0],
+      );
+      if (promo) {
+        appliedDiscount = promo.discount;
+        finalPrice =
+          Math.round(
+            booking.originalPrice * (1 - appliedDiscount / 100) * 100,
+          ) / 100;
+        if (DOM.discountPercent)
+          DOM.discountPercent.textContent = appliedDiscount;
+        if (DOM.discountAmount)
+          DOM.discountAmount.textContent = (
+            booking.originalPrice - finalPrice
+          ).toFixed(2);
+        if (DOM.finalPriceEl)
+          DOM.finalPriceEl.textContent = finalPrice.toFixed(2);
+        if (DOM.discountRow) DOM.discountRow.style.display = "block";
+        if (DOM.promoMessage)
+          DOM.promoMessage.innerHTML = `<span class="success">${promo.code} applied! You save $${(booking.originalPrice - finalPrice).toFixed(2)}!</span>`;
+      } else {
+        if (DOM.promoMessage)
+          DOM.promoMessage.innerHTML = `<span class="error">Invalid or expired promo code.</span>`;
+      }
     }
 
     if (DOM.confirmBookingBtn) {
-      DOM.confirmBookingBtn.addEventListener("click", () => {
-        let bookings = database.get(database.config.keys.bookings);
-        let studentId = sessionStorage.getItem("currentStudentId");
-        let balance = database.wallet.get();
-        finalPrice = Math.round(finalPrice * 100) / 100;
+      DOM.confirmBookingBtn.removeEventListener("click", handleConfirmBooking);
+      DOM.confirmBookingBtn.addEventListener("click", handleConfirmBooking);
+    }
 
-        if (
-          bookings.some(
-            (b) =>
-              b.roomId === booking.roomId &&
-              b.startTime === booking.slot &&
-              b.date === booking.date,
-          )
-        ) {
-          alert("❌ Slot already booked!");
-          sessionStorage.removeItem("checkoutData");
-          window.location.href = "student.html";
-          return;
-        }
-        if (balance < finalPrice) {
-          alert(
-            `❌ Need $${finalPrice.toFixed(2)}, have $${balance.toFixed(2)}`,
-          );
-          return;
-        }
+    function handleConfirmBooking() {
+      let bookings = database.get(database.config.keys.bookings);
+      let studentId = sessionStorage.getItem("currentStudentId");
+      let balance = database.wallet.get();
+      finalPrice = Math.round(finalPrice * 100) / 100;
 
-        bookings.push({
-          id: Date.now(),
-          roomId: booking.roomId,
-          room: booking.roomName,
-          date: booking.date,
-          startTime: booking.slot,
-          endTime: booking.endTime,
-          originalPrice: booking.originalPrice,
-          finalPrice,
-          discountPercent: appliedDiscount,
-          promoCodeUsed:
-            appliedDiscount > 0 ? DOM.promoCodeInput.value.toUpperCase() : null,
-          studentId,
-        });
-        database.set(database.config.keys.bookings, bookings);
-        database.wallet.set(balance - finalPrice);
-        alert(
-          `Booked! Paid $${finalPrice.toFixed(2)}${appliedDiscount > 0 ? ` Saved $${(booking.originalPrice - finalPrice).toFixed(2)}` : ""}`,
-        );
+      if (
+        bookings.some(
+          (b) =>
+            b.roomId === booking.roomId &&
+            b.startTime === booking.slot &&
+            b.date === booking.date,
+        )
+      ) {
+        alert("Slot already booked!");
         sessionStorage.removeItem("checkoutData");
         window.location.href = "student.html";
+        return;
+      }
+      if (balance < finalPrice) {
+        alert(`Need $${finalPrice.toFixed(2)}, have $${balance.toFixed(2)}`);
+        return;
+      }
+
+      bookings.push({
+        id: Date.now(),
+        roomId: booking.roomId,
+        room: booking.roomName,
+        date: booking.date,
+        startTime: booking.slot,
+        endTime: booking.endTime,
+        originalPrice: booking.originalPrice,
+        finalPrice,
+        discountPercent: appliedDiscount,
+        promoCodeUsed:
+          appliedDiscount > 0 ? DOM.promoCodeInput.value.toUpperCase() : null,
+        studentId,
       });
+      database.set(database.config.keys.bookings, bookings);
+      database.wallet.set(balance - finalPrice);
+      alert(
+        `Booked! Paid $${finalPrice.toFixed(2)}${appliedDiscount > 0 ? ` Saved $${(booking.originalPrice - finalPrice).toFixed(2)}` : ""}`,
+      );
+      sessionStorage.removeItem("checkoutData");
+      window.location.href = "student.html";
     }
 
     if (DOM.cancelCheckoutBtn) {
-      DOM.cancelCheckoutBtn.addEventListener("click", () => {
-        sessionStorage.removeItem("checkoutData");
-        window.location.href = "student.html";
-      });
+      DOM.cancelCheckoutBtn.removeEventListener("click", handleCancelCheckout);
+      DOM.cancelCheckoutBtn.addEventListener("click", handleCancelCheckout);
+    }
+
+    function handleCancelCheckout() {
+      sessionStorage.removeItem("checkoutData");
+      window.location.href = "student.html";
     }
   };
   loadCheckoutPage();
@@ -676,3 +740,19 @@ if (DOM.promoTable) renderPromoCodes();
 if (DOM.roomsContainer) renderAvailableRooms();
 if (DOM.studentBookings) renderStudentBookings();
 if (DOM.walletBalance) DOM.walletBalance.textContent = database.wallet.get();
+
+// ===================== REFRESH INTERVAL (Optional - for real-time) =====================
+// Refresh data every 2 seconds to ensure real-time updates across tabs
+setInterval(() => {
+  if (DOM.roomsContainer) {
+    database.rooms = database.get(database.config.keys.rooms);
+    renderAvailableRooms();
+  }
+  if (DOM.studentBookings) {
+    database.bookings = database.get(database.config.keys.bookings);
+    renderStudentBookings();
+  }
+  if (DOM.walletBalance) {
+    DOM.walletBalance.textContent = database.wallet.get();
+  }
+}, 2000);
