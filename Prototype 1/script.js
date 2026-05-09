@@ -50,6 +50,12 @@ const DOM = {
   discountRow: document.getElementById("discountRow"),
 };
 
+// ===================== LOGOUT FUNCTION =====================
+const clearSessionAndLogout = () => {
+  sessionStorage.clear();
+  window.location.href = "index.html";
+};
+
 // =================== LocalStorage Database ===================
 const database = {
   config: {
@@ -58,6 +64,7 @@ const database = {
       rooms: "rooms",
       bookings: "bookings",
       promoCodes: "promoCodes",
+      notifications: "notifications",
     },
     pages: { staff: "staff.html", student: "student.html" },
   },
@@ -106,6 +113,7 @@ const database = {
         active: true,
       },
     ],
+    notifications: [],
   },
   get: (k) => JSON.parse(localStorage.getItem(k)),
   set: (k, v) => localStorage.setItem(k, JSON.stringify(v)),
@@ -154,8 +162,89 @@ const database = {
 };
 database.init();
 
+// ===================== NOTIFICATION SYSTEM =====================
+const addNotification = (
+  studentId,
+  message,
+  roomName,
+  date,
+  time,
+  refundAmount,
+) => {
+  const notifications = database.get(database.config.keys.notifications) || [];
+  notifications.push({
+    id: Date.now() + Math.random(),
+    studentId: studentId,
+    message: message,
+    roomName: roomName,
+    date: date,
+    time: time,
+    refundAmount: refundAmount,
+    timestamp: Date.now(),
+    read: false,
+  });
+  database.set(database.config.keys.notifications, notifications);
+  console.log(`Notification added for student ${studentId}: ${roomName}`);
+};
+
+const getPendingNotifications = (studentId) => {
+  const notifications = database.get(database.config.keys.notifications) || [];
+  const pending = notifications.filter(
+    (n) => n.studentId === studentId && !n.read,
+  );
+  console.log(`Pending notifications for ${studentId}:`, pending.length);
+  return pending;
+};
+
+const markNotificationAsRead = (notificationId) => {
+  const notifications = database.get(database.config.keys.notifications) || [];
+  const updated = notifications.map((n) =>
+    n.id === notificationId ? { ...n, read: true } : n,
+  );
+  database.set(database.config.keys.notifications, updated);
+};
+
+const clearNotificationsForStudent = (studentId) => {
+  const notifications = database.get(database.config.keys.notifications) || [];
+  const remaining = notifications.filter((n) => n.studentId !== studentId);
+  database.set(database.config.keys.notifications, remaining);
+};
+
+const showStudentNotifications = () => {
+  const currentStudentId = sessionStorage.getItem("currentStudentId");
+  if (!currentStudentId) {
+    console.log("No student logged in");
+    return;
+  }
+
+  const pending = getPendingNotifications(currentStudentId);
+  console.log(
+    "Showing notifications for:",
+    currentStudentId,
+    "Count:",
+    pending.length,
+  );
+
+  if (pending.length > 0) {
+    let message = "BOOKING CANCELLATIONS\n\n";
+    pending.forEach((notification) => {
+      message += `  Room: ${notification.roomName}\n`;
+      message += `  ${notification.message}\n`;
+      message += `  Refund: $${notification.refundAmount.toFixed(2)}\n\n`;
+      markNotificationAsRead(notification.id);
+    });
+    message += "The money has been refunded to your wallet.";
+    alert(message);
+
+    // Refresh the page data
+    if (DOM.roomsContainer) renderAvailableRooms();
+    if (DOM.studentBookings) renderStudentBookings();
+    if (DOM.walletBalance)
+      DOM.walletBalance.textContent = database.wallet.get();
+  }
+};
+
 // ===================== REAL-TIME SYNC =====================
-// Listen for storage changes from other tabs/windows
 window.addEventListener("storage", (e) => {
   if (e.key === "rooms") {
     database.rooms = database.get(database.config.keys.rooms);
@@ -176,6 +265,9 @@ window.addEventListener("storage", (e) => {
   if (e.key === "promoCodes") {
     database.promoCodes = database.get(database.config.keys.promoCodes);
     if (DOM.promoTable) renderPromoCodes();
+  }
+  if (e.key === "notifications") {
+    if (DOM.roomsContainer) showStudentNotifications();
   }
 });
 
@@ -237,27 +329,21 @@ if (DOM.loginForm) {
 
     if (account) {
       sessionStorage.setItem("currentUserRole", role);
+      sessionStorage.setItem("currentUsername", username);
+
       if (role === "student") {
         sessionStorage.setItem("currentStudentId", account.id);
       }
       window.location.href = database.config.pages[role];
     } else {
       if (errorDiv) {
-        errorDiv.innerHTML = "❌ Invalid Credentials!";
+        errorDiv.innerHTML = "Invalid Credentials!";
         errorDiv.style.display = "block";
       }
     }
   });
 }
-
 // ===================== STAFF PAGE =====================
-const staffNameSpan = document.getElementById("staffName");
-if (staffNameSpan) {
-  const staffUsername =
-    sessionStorage.getItem("staffUsername") || database.users.staff.username;
-  staffNameSpan.textContent = staffUsername;
-}
-
 const renderRooms = () => {
   if (!DOM.roomTable) return;
   DOM.roomTable.innerHTML = database.rooms
@@ -280,6 +366,12 @@ const renderRooms = () => {
   `,
     )
     .join("");
+
+  const staffNameSpan = document.getElementById("staffName");
+  if (staffNameSpan) {
+    const username = sessionStorage.getItem("currentUsername");
+    staffNameSpan.textContent = username || "Staff";
+  }
 };
 
 const renderPromoCodes = () => {
@@ -303,19 +395,46 @@ const renderPromoCodes = () => {
     .join("");
 };
 
-const refundBookingsForRoom = (roomId) => {
+const refundBookingsAndNotify = (roomId, roomName, actionType) => {
   let bookings = database.get(database.config.keys.bookings) || [];
-  let affected = bookings.filter((b) => b.roomId === roomId);
-  affected.forEach((b) => {
-    let student = database.users.students.find((s) => s.id === b.studentId);
-    if (student) student.wallet += b.finalPrice || b.originalPrice;
+  let affectedBookings = bookings.filter((b) => b.roomId === roomId);
+
+  if (affectedBookings.length === 0) return false;
+
+  affectedBookings.forEach((booking) => {
+    let student = database.users.students.find(
+      (s) => s.id === booking.studentId,
+    );
+    let refundAmount = booking.finalPrice || booking.originalPrice;
+
+    if (student) {
+      student.wallet += refundAmount;
+    }
+
+    addNotification(
+      booking.studentId,
+      `Your booking on ${booking.date} at ${booking.startTime} has been cancelled by staff.`,
+      roomName,
+      booking.date,
+      booking.startTime,
+      refundAmount,
+    );
   });
+
   database.set(database.config.keys.users, database.users);
-  database.set(
-    database.config.keys.bookings,
-    bookings.filter((b) => b.roomId !== roomId),
+
+  let remainingBookings = bookings.filter((b) => b.roomId !== roomId);
+  database.set(database.config.keys.bookings, remainingBookings);
+  database.bookings = remainingBookings;
+
+  alert(
+    `Room "${roomName}" has been ${actionType}!\n\n` +
+      `${affectedBookings.length} booking(s) cancelled.\n` +
+      `All students have been refunded.\n` +
+      `Notifications have been saved and will be shown when students log in.`,
   );
-  database.bookings = database.get(database.config.keys.bookings);
+
+  return true;
 };
 
 // Staff Event Listeners
@@ -325,37 +444,123 @@ document.addEventListener("click", (e) => {
   if (index !== undefined) {
     if (action === "toggle") {
       let room = database.rooms[index];
-      room.status = !room.status;
-      if (!room.status) refundBookingsForRoom(room.id);
-      database.set(database.config.keys.rooms, database.rooms);
-      renderRooms();
+      let hasBookings = (database.bookings || []).some(
+        (b) => b.roomId === room.id,
+      );
+
+      if (!room.status) {
+        if (
+          confirm(
+            `Are you sure you want to LAUNCH "${room.name}"?\n\nThis room will be available for booking.`,
+          )
+        ) {
+          room.status = true;
+          database.set(database.config.keys.rooms, database.rooms);
+          renderRooms();
+          alert(`Room "${room.name}" has been LAUNCHED!`);
+        }
+      } else {
+        if (hasBookings) {
+          if (
+            confirm(
+              `UNLAUNCH CONFIRMATION\n\nRoom: "${room.name}"\n\nThis room has ACTIVE BOOKINGS!\n\n• All bookings will be CANCELLED\n• Students will be FULLY REFUNDED\n• Notifications will be sent to students\n\nDo you want to continue?`,
+            )
+          ) {
+            room.status = false;
+            refundBookingsAndNotify(room.id, room.name, "UNLAUNCHED");
+            database.set(database.config.keys.rooms, database.rooms);
+            renderRooms();
+            if (DOM.roomsContainer) renderAvailableRooms();
+            if (DOM.studentBookings) renderStudentBookings();
+          }
+        } else {
+          if (
+            confirm(
+              `UNLAUNCH CONFIRMATION\n\nRoom: "${room.name}"\n\nThis room has ACTIVE BOOKINGS!\n\n• All bookings will be CANCELLED\n• Students will be FULLY REFUNDED\n• Notifications will be sent to students\n\nDo you want to continue?`,
+            )
+          ) {
+            room.status = false;
+            database.set(database.config.keys.rooms, database.rooms);
+            renderRooms();
+            alert(`Room "${room.name}" has been UNLAUNCHED!`);
+          }
+        }
+      }
     } else if (action === "edit") {
       localStorage.setItem("editRoomIndex", index);
       window.location.href = "room-form.html";
-    } else if (action === "delete" && confirm("Delete room?")) {
-      refundBookingsForRoom(database.rooms[index].id);
-      database.rooms.splice(index, 1);
-      database.set(database.config.keys.rooms, database.rooms);
-      renderRooms();
+    } else if (action === "delete") {
+      let room = database.rooms[index];
+      let hasBookings = (database.bookings || []).some(
+        (b) => b.roomId === room.id,
+      );
+
+      if (hasBookings) {
+        if (
+          confirm(
+            `⚠️ UNLAUNCH CONFIRMATION ⚠️\n\nRoom: "${room.name}"\n\nThis room has ACTIVE BOOKINGS!\n\n• All bookings will be CANCELLED\n• Students will be FULLY REFUNDED\n• Notifications will be sent to students\n\nDo you want to continue?`,
+          )
+        ) {
+          refundBookingsAndNotify(room.id, room.name, "DELETED");
+          database.rooms.splice(index, 1);
+          database.set(database.config.keys.rooms, database.rooms);
+          renderRooms();
+          if (DOM.roomsContainer) renderAvailableRooms();
+          if (DOM.studentBookings) renderStudentBookings();
+        }
+      } else {
+        if (
+          confirm(
+            `Are you sure you want to DELETE "${room.name}"?\n\nThis action cannot be undone.`,
+          )
+        ) {
+          database.rooms.splice(index, 1);
+          database.set(database.config.keys.rooms, database.rooms);
+          renderRooms();
+          alert(`Room "${room.name}" has been DELETED!`);
+        }
+      }
     }
   }
 
   if (promoAction === "toggle" && promoIndex !== undefined) {
-    database.promoCodes[promoIndex].active =
-      !database.promoCodes[promoIndex].active;
-    database.set(database.config.keys.promoCodes, database.promoCodes);
-    renderPromoCodes();
+    let promo = database.promoCodes[promoIndex];
+    let newStatus = !promo.active;
+    let actionText = newStatus ? "LAUNCHED" : "UNLAUNCHED";
+
+    if (
+      confirm(
+        `Are you sure you want to ${actionText} promo code "${promo.code}"?`,
+      )
+    ) {
+      database.promoCodes[promoIndex].active = newStatus;
+      database.set(database.config.keys.promoCodes, database.promoCodes);
+      renderPromoCodes();
+      alert(`Promo code "${promo.code}" has been ${actionText}!`);
+    }
   } else if (promoAction === "edit" && promoIndex !== undefined) {
     localStorage.setItem("editPromoIndex", promoIndex);
     window.location.href = "promo-form.html";
-  } else if (
-    promoAction === "delete" &&
-    promoIndex !== undefined &&
-    confirm(`Delete "${database.promoCodes[promoIndex].code}"?`)
-  ) {
-    database.promoCodes.splice(promoIndex, 1);
-    database.set(database.config.keys.promoCodes, database.promoCodes);
-    renderPromoCodes();
+  } else if (promoAction === "delete" && promoIndex !== undefined) {
+    let promo = database.promoCodes[promoIndex];
+    if (
+      confirm(
+        `Are you sure you want to DELETE promo code "${promo.code}"?\n\nThis action cannot be undone.`,
+      )
+    ) {
+      database.promoCodes.splice(promoIndex, 1);
+      database.set(database.config.keys.promoCodes, database.promoCodes);
+      renderPromoCodes();
+      alert(`Promo code "${promo.code}" has been DELETED!`);
+    }
+  }
+
+  // Logout button handler
+  if (e.target.id === "logoutBtn" || e.target.closest("#logoutBtn")) {
+    e.preventDefault();
+    if (confirm("Are you sure you want to logout?")) {
+      clearSessionAndLogout();
+    }
   }
 });
 
@@ -453,17 +658,6 @@ if (document.getElementById("promoForm")) {
 }
 
 // ===================== STUDENT PAGE =====================
-const studentNameSpan = document.getElementById("studentName");
-if (studentNameSpan) {
-  const studentId = sessionStorage.getItem("currentStudentId");
-  const student = database.users.students.find((s) => s.id === studentId);
-  if (student) {
-    studentNameSpan.textContent = student.username;
-  } else {
-    studentNameSpan.textContent = "Student";
-  }
-}
-
 const goToCheckout = (room, slot, endTime) => {
   sessionStorage.setItem(
     "checkoutData",
@@ -482,7 +676,6 @@ const goToCheckout = (room, slot, endTime) => {
 const renderAvailableRooms = () => {
   if (!DOM.roomsContainer) return;
 
-  // Refresh data from localStorage before rendering
   database.rooms = database.get(database.config.keys.rooms);
   let bookings = database.get(database.config.keys.bookings) || [];
   let available = database.rooms.filter((r) => r.status);
@@ -528,6 +721,16 @@ const renderAvailableRooms = () => {
     btn.removeEventListener("click", handleSlotClick);
     btn.addEventListener("click", handleSlotClick);
   });
+
+  const studentNameSpan = document.getElementById("studentName");
+  if (studentNameSpan) {
+    const username = sessionStorage.getItem("currentUsername");
+    studentNameSpan.textContent = username || "Student";
+  }
+
+  window.addEventListener("DOMContentLoaded", () => {
+    showStudentNotifications();
+  });
 };
 
 const handleSlotClick = (e) => {
@@ -539,7 +742,6 @@ const handleSlotClick = (e) => {
 const renderStudentBookings = () => {
   if (!DOM.studentBookings) return;
 
-  // Refresh data from localStorage
   database.bookings = database.get(database.config.keys.bookings);
   let studentId = sessionStorage.getItem("currentStudentId");
   let myBookings = (database.bookings || []).filter(
@@ -563,7 +765,7 @@ const renderStudentBookings = () => {
   `,
         )
         .join("")
-    : '<tr><td colspan="8">No bookings yet</td></tr>';
+    : '</table><td colspan="8">No bookings yet</td><tr';
 
   document.querySelectorAll("[data-cancel]").forEach((btn) => {
     btn.removeEventListener("click", handleCancelClick);
@@ -577,7 +779,12 @@ const handleCancelClick = (e) => {
   let allBookings = database.get(database.config.keys.bookings) || [];
   let booking = allBookings.filter((b) => b.studentId === studentId)[idx];
 
-  if (booking && confirm("Cancel this booking?")) {
+  if (
+    booking &&
+    confirm(
+      `Cancel booking for "${booking.room}" on ${booking.date} at ${booking.startTime}?\n\nYou will be refunded $${(booking.finalPrice || booking.originalPrice).toFixed(2)}`,
+    )
+  ) {
     let refund = booking.finalPrice || booking.originalPrice;
     database.set(
       database.config.keys.bookings,
@@ -585,7 +792,7 @@ const handleCancelClick = (e) => {
     );
     database.bookings = database.get(database.config.keys.bookings);
     database.wallet.set(database.wallet.get() + refund);
-    alert(`Cancelled! Refunded $${refund.toFixed(2)}`);
+    alert(`Booking cancelled! Refunded $${refund.toFixed(2)} to your wallet.`);
     renderAvailableRooms();
     renderStudentBookings();
   }
@@ -737,22 +944,11 @@ if (DOM.confirmBookingBtn) {
 // ===================== INITIAL RENDER =====================
 if (DOM.roomTable) renderRooms();
 if (DOM.promoTable) renderPromoCodes();
-if (DOM.roomsContainer) renderAvailableRooms();
+if (DOM.roomsContainer) {
+  renderAvailableRooms();
+}
 if (DOM.studentBookings) renderStudentBookings();
 if (DOM.walletBalance) DOM.walletBalance.textContent = database.wallet.get();
-
-// ===================== REFRESH INTERVAL (Optional - for real-time) =====================
-// Refresh data every 2 seconds to ensure real-time updates across tabs
-setInterval(() => {
-  if (DOM.roomsContainer) {
-    database.rooms = database.get(database.config.keys.rooms);
-    renderAvailableRooms();
-  }
-  if (DOM.studentBookings) {
-    database.bookings = database.get(database.config.keys.bookings);
-    renderStudentBookings();
-  }
-  if (DOM.walletBalance) {
-    DOM.walletBalance.textContent = database.wallet.get();
-  }
-}, 2000);
+if (DOM.roomsContainer) {
+  showStudentNotifications();
+}
