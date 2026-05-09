@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Promo Form</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div class="page">
+      <h2 id="modalTitle">Create Promo Code</h2>
+      <form id="promoForm">
+        <label for="promoCode">Promo Code:</label>
+        <input type="text" id="promoCode" required />
+
+        <label for="discount">Discount (%):</label>
+        <input type="number" id="discount" min="0" max="100" required />
+
+        <label for="validUntil">Valid Until:</label>
+        <input type="date" id="validUntil" required />
+
+        <div class="form-buttons">
+          <button type="submit" id="submitBtn">Create Promo</button>
+          <button type="button" id="backBtn">Back</button>
+        </div>
+      </form>
+    </div>
+    <script src="script.js"></script>
+  </body>
+</html>

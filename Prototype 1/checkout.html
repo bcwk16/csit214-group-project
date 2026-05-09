@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Checkout - Confirm Booking</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div class="page">
+      <h2>Complete Your Booking</h2>
+
+      <div class="card">
+        <div class="card-title">Booking Details</div>
+        <div class="card-subtitle mt-10">
+          <p><strong>Room:</strong> <span id="summaryRoomName"></span></p>
+          <p><strong>Date:</strong> <span id="summaryDate"></span></p>
+          <p>
+            <strong>Time Slot:</strong> <span id="summarySlot"></span> -
+            <span id="summaryEndTime"></span>
+          </p>
+          <p>
+            <strong>Original Price:</strong> $<span
+              id="summaryOriginalPrice"
+            ></span>
+          </p>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Promo Code</div>
+        <div class="flex gap-10 mt-10">
+          <input
+            type="text"
+            id="promoCodeInput"
+            placeholder="Enter promo code"
+            class="flex-2"
+          />
+          <button id="applyPromoBtn" class="flex-1">Apply</button>
+        </div>
+        <div id="promoMessage" class="mt-10"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Price Breakdown</div>
+        <div class="card-subtitle mt-10">
+          <p>Original: $<span id="displayOriginalPrice"></span></p>
+          <p id="discountRow" class="hidden">
+            Discount (<span id="discountPercent"></span>%): -$<span
+              id="discountAmount"
+            ></span>
+          </p>
+          <p>
+            <strong>Final Price: $<span id="finalPrice"></span></strong>
+          </p>
+        </div>
+      </div>
+
+      <div class="flex gap-10 mt-20">
+        <button id="confirmBookingBtn" class="flex-1">Confirm Booking</button>
+        <button id="cancelCheckoutBtn" class="flex-1">Cancel</button>
+      </div>
+    </div>
+    <script src="script.js"></script>
+  </body>
+</html>

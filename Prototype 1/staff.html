@@ -6,20 +6,22 @@
     <link rel="stylesheet" href="style.css" />
   </head>
   <body>
-    <h2>UOW Room Management</h2>
+    <div class="staff-header">
+      <h2>UOW Room Management</h2>
+      <div class="staff-header-buttons">
+        <a href="room-form.html"><button>Create Room</button></a>
+        <a href="promo-form.html"><button>Create Promo Code</button></a>
+        <a href="index.html"><button>Logout</button></a>
+      </div>
+    </div>
 
-    <!-- Link to dedicated room creation page -->
-    <a href="form.html">
-      <button id="openCreateForm">Create Room</button>
-    </a>
-
+    <h3>Rooms</h3>
     <table>
       <thead>
         <tr>
           <th>Name</th>
           <th>Capacity</th>
           <th>Price</th>
-          <th>Promo</th>
           <th>Date</th>
           <th>Start</th>
           <th>End</th>
@@ -30,8 +32,20 @@
       <tbody id="roomTable"></tbody>
     </table>
 
-    <script src="config.js"></script>
-    <script src="database.js"></script>
+    <h3>Promo Codes</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Code</th>
+          <th>Discount</th>
+          <th>Valid Until</th>
+          <th>Status</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="promoTable"></tbody>
+    </table>
+
     <script src="script.js"></script>
   </body>
 </html>

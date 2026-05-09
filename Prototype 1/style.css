@@ -1,65 +1,306 @@
+/* ===================== Base ===================== */
+* {
+  box-sizing: border-box;
+}
+
 body {
   font-family: Arial, sans-serif;
   margin: 40px;
 }
-form,
-.section {
-  max-width: 600px;
+
+/* ================= Typography ===================== */
+h2 {
+  text-align: center;
   margin-bottom: 20px;
 }
+
+h3 {
+  margin-top: 30px;
+  margin-bottom: 10px;
+}
+
+/* ===================== Layout Containers ===================== */
+.page {
+  max-width: 500px;
+  margin: 50px auto;
+}
+
+.flex {
+  display: flex;
+}
+
+.flex-between {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.flex-wrap {
+  flex-wrap: wrap;
+}
+
+.gap-10 {
+  gap: 10px;
+}
+
+.gap-15 {
+  gap: 15px;
+}
+
+.justify-center {
+  justify-content: center;
+}
+
+.text-center {
+  text-align: center;
+}
+
+/* ===================== Spacing ===================== */
+.mt-10 {
+  margin-top: 10px;
+}
+
+.mt-20 {
+  margin-top: 20px;
+}
+
+.mb-20 {
+  margin-bottom: 20px;
+}
+
+/* ===================== Forms ===================== */
 form {
+  max-width: 600px;
   padding: 20px;
   border: 1px solid #ccc;
   border-radius: 8px;
+  margin-bottom: 20px;
 }
+
 label {
   display: block;
   margin-top: 10px;
 }
+
 input,
 select,
 button {
   width: 100%;
   padding: 8px;
   margin-top: 5px;
+  box-sizing: border-box;
 }
+
+button {
+  cursor: pointer;
+}
+
+.form-buttons {
+  display: flex;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.form-buttons button {
+  flex: 1;
+  margin-top: 0;
+}
+
+/* ===================== Tables ===================== */
 table {
   width: 100%;
   border-collapse: collapse;
   margin-top: 10px;
 }
+
 th,
 td {
   border: 1px solid #ccc;
   padding: 8px;
   text-align: left;
 }
+
+/* ===================== Staff Header ===================== */
+.staff-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+  gap: 15px;
+}
+
+.staff-header-buttons {
+  display: flex;
+  gap: 10px;
+}
+
+/* ===================== Cards (Room Display) ===================== */
+.rooms-container {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.room-card {
+  border: 1px solid #e0e0e0;
+  border-radius: 16px;
+  padding: 20px;
+  margin-bottom: 20px;
+  background: #fff;
+}
+
+.room-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 2px solid #f0f0f0;
+}
+
+.room-title h3 {
+  margin: 0 0 4px 0;
+  font-size: 18px;
+  font-weight: bold;
+}
+
+.room-meta {
+  display: flex;
+  gap: 12px;
+  font-size: 13px;
+  color: #666;
+}
+
+.room-price-box {
+  text-align: right;
+}
+
+.price {
+  font-size: 20px;
+  font-weight: bold;
+}
+
+.price-label {
+  font-size: 11px;
+  color: #888;
+}
+
+.slots-section {
+  margin-top: 8px;
+}
+
+.slots-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: #888;
+  margin-bottom: 12px;
+  text-transform: uppercase;
+}
+
+.slots-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 10px;
+}
+
+.slot-btn {
+  padding: 8px 14px;
+  border: 1px solid #ddd;
+  background: #fafafa;
+  cursor: pointer;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.slot-btn:hover:not(.booked) {
+  background: #2a5298;
+  border-color: #2a5298;
+  color: white;
+}
+
+.slot-btn.booked {
+  background: #f5f5f5;
+  text-decoration: line-through;
+  cursor: not-allowed;
+  color: #bbb;
+}
+
+/* ===================== Card Component (Checkout/Deposit) ===================== */
+.card {
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 20px;
+  background: #fff;
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+}
+
+.card-title {
+  font-size: 18px;
+  font-weight: bold;
+}
+
+.card-subtitle {
+  font-size: 14px;
+  color: #555;
+}
+
+/* ===================== Badge / Balance Display ===================== */
+.badge {
+  background: #f5f5f5;
+  padding: 8px 16px;
+  border-radius: 20px;
+}
+
+.badge-large {
+  font-size: 32px;
+  font-weight: bold;
+  display: inline-block;
+  margin: 20px 0;
+  text-align: center;
+}
+
+.header-actions {
+  display: flex;
+  gap: 15px;
+  align-items: center;
+}
+
+/* ===================== Checkout Page ===================== */
+.original-price {
+  text-decoration: line-through;
+  color: #999;
+}
+
+.error {
+  color: red;
+}
+
+.success {
+  color: green;
+}
+
+/* ===================== Utilities ===================== */
 .hidden {
   display: none;
 }
 
-.modal {
-  display: none;
-  position: fixed;
-  z-index: 1;
-  left: 0;
-  top: 0;
+.w-full {
   width: 100%;
-  height: 100%;
-  background-color: rgba(0, 0, 0, 0.5);
 }
-.modal-content {
-  background: #fff;
-  margin: 10% auto;
-  padding: 20px;
-  border-radius: 8px;
-  width: 400px;
+
+.flex-2 {
+  flex: 2;
 }
-.close {
-  float: right;
-  font-size: 20px;
-  cursor: pointer;
-}
-.hidden {
-  display: none;
+
+.flex-1 {
+  flex: 1;
 }

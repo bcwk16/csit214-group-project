@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Deposit - Wallet</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div class="page">
+      <h2>Wallet Management</h2>
+
+      <div class="card text-center">
+        <div class="card-header justify-center">
+          <div class="card-title">Current Balance</div>
+        </div>
+        <div class="badge-large">$<span id="walletBalance">0</span></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Deposit Amount</div>
+        <div class="flex gap-10 mt-15">
+          <input
+            type="number"
+            id="customAmount"
+            placeholder="Enter amount"
+            min="1"
+            class="flex-2"
+          />
+          <button id="customDepositBtn" class="flex-1">Add Funds</button>
+        </div>
+      </div>
+
+      <div class="flex gap-10 mt-20">
+        <a href="student.html" class="w-full"
+          ><button class="w-full">Back to Booking</button></a
+        >
+      </div>
+    </div>
+    <script src="script.js"></script>
+  </body>
+</html>

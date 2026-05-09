@@ -8,231 +8,201 @@ const DOM = {
 
   // Staff Page
   roomTable: document.getElementById("roomTable"),
-  submitBtn: document.getElementById("submitBtn"),
-  backBtn: document.getElementById("backBtn"),
+  promoTable: document.getElementById("promoTable"),
 
-  // Staff Room Form fields
-  modalTitle: document.getElementById("modalTitle"),
+  // Room Form Page
   roomForm: document.getElementById("roomForm"),
   roomName: document.getElementById("roomName"),
   capacity: document.getElementById("capacity"),
   price: document.getElementById("price"),
-  promo: document.getElementById("promo"),
   roomDate: document.getElementById("roomDate"),
   roomStartTime: document.getElementById("roomStartTime"),
   roomEndTime: document.getElementById("roomEndTime"),
+  submitBtn: document.getElementById("submitBtn"),
+  backBtn: document.getElementById("backBtn"),
+  modalTitle: document.getElementById("modalTitle"),
 
   // Student Page
   walletBalance: document.getElementById("walletBalance"),
-  availableRooms: document.getElementById("availableRooms"),
   studentBookings: document.getElementById("studentBookings"),
-};
+  roomsContainer: document.getElementById("roomsContainer"),
 
+  // Deposit Page
+  customDepositBtn: document.getElementById("customDepositBtn"),
+  customAmount: document.getElementById("customAmount"),
+
+  // Checkout Page
+  confirmBookingBtn: document.getElementById("confirmBookingBtn"),
+  cancelCheckoutBtn: document.getElementById("cancelCheckoutBtn"),
+  applyPromoBtn: document.getElementById("applyPromoBtn"),
+  promoCodeInput: document.getElementById("promoCodeInput"),
+  promoMessage: document.getElementById("promoMessage"),
+  summaryRoomName: document.getElementById("summaryRoomName"),
+  summaryDate: document.getElementById("summaryDate"),
+  summarySlot: document.getElementById("summarySlot"),
+  summaryEndTime: document.getElementById("summaryEndTime"),
+  summaryOriginalPrice: document.getElementById("summaryOriginalPrice"),
+  displayOriginalPrice: document.getElementById("displayOriginalPrice"),
+  finalPriceEl: document.getElementById("finalPrice"),
+  discountPercent: document.getElementById("discountPercent"),
+  discountAmount: document.getElementById("discountAmount"),
+  discountRow: document.getElementById("discountRow"),
+};
 
 // =================== LocalStorage Database ===================
 const database = {
   config: {
-    keys: { users: "users", rooms: "rooms", bookings: "bookings" },
-    slotDuration: 1,
-    defaults: {
-      users: {
-        staff: { username: "admin", password: "admin" },
-        students: [
-          { id: "s01", username: "user1", password: "user1", wallet: 100 },
-          { id: "s02", username: "user2", password: "user2", wallet: 200 },
-        ],
-      },
-      rooms: [
-        {
-          id: "01",
-          name: "UOW Seminar Room A",
-          capacity: 20,
-          price: 50,
-          promo: "WELCOME10",
-          date: "20-04-2026",
-          startTime: "09:00",
-          endTime: "12:00",
-          status: true,
-        },
-        {
-          id: "02",
-          name: "UOW Seminar Room B",
-          capacity: 15,
-          price: 40,
-          promo: "SPRING20",
-          date: "22-04-2026",
-          startTime: "13:00",
-          endTime: "16:00",
-          status: false,
-        },
-      ],
-      bookings: [],
+    keys: {
+      users: "users",
+      rooms: "rooms",
+      bookings: "bookings",
+      promoCodes: "promoCodes",
     },
     pages: { staff: "staff.html", student: "student.html" },
   },
-
+  defaults: {
+    users: {
+      staff: { username: "admin", password: "admin" },
+      students: [
+        { id: "s01", username: "user1", password: "user1", wallet: 100 },
+        { id: "s02", username: "user2", password: "user2", wallet: 200 },
+      ],
+    },
+    rooms: [
+      {
+        id: "01",
+        name: "UOW Seminar Room A",
+        capacity: 20,
+        price: 50,
+        date: "2026-04-20",
+        startTime: "09:00",
+        endTime: "12:00",
+        status: true,
+      },
+      {
+        id: "02",
+        name: "UOW Seminar Room B",
+        capacity: 15,
+        price: 40,
+        date: "2026-04-22",
+        startTime: "13:00",
+        endTime: "16:00",
+        status: true,
+      },
+    ],
+    bookings: [],
+    promoCodes: [
+      {
+        code: "WELCOME10",
+        discount: 10,
+        validUntil: "2026-12-31",
+        active: true,
+      },
+      {
+        code: "SPRING20",
+        discount: 20,
+        validUntil: "2026-05-30",
+        active: true,
+      },
+    ],
+  },
   get: (k) => JSON.parse(localStorage.getItem(k)),
-  set: (k, v) => {
-    localStorage.setItem(k, JSON.stringify(v));
-    window.dispatchEvent(
-      new StorageEvent("storage", {
-        key: k,
-        newValue: JSON.stringify(v),
-        oldValue: localStorage.getItem(k),
-      }),
-    );
-  },
-
+  set: (k, v) => localStorage.setItem(k, JSON.stringify(v)),
   init() {
-    const { keys, defaults } = this.config;
-    Object.entries(defaults).forEach(([k, v]) => {
-      if (!localStorage.getItem(keys[k])) this.set(keys[k], v);
-    });
-    this.users = this.get(keys.users);
-    this.rooms = this.get(keys.rooms);
-    this.bookings = this.get(keys.bookings);
+    for (let [k, v] of Object.entries(this.defaults)) {
+      if (!localStorage.getItem(this.config.keys[k]))
+        this.set(this.config.keys[k], v);
+      this[k] = this.get(this.config.keys[k]);
+    }
   },
-
   saveRoom(room) {
-    const maxId = this.rooms.reduce((m, r) => Math.max(m, +r.id), 0);
-    room.id = String(maxId + 1).padStart(2, "0");
+    room.id = String(
+      this.rooms.reduce((m, r) => Math.max(m, +r.id), 0) + 1,
+    ).padStart(2, "0");
     this.rooms.push(room);
     this.set(this.config.keys.rooms, this.rooms);
   },
-
   wallet: {
     get: () => {
-      const id = sessionStorage.getItem("currentStudentId");
-      const student = database.users.students.find((s) => s.id === id);
+      const student = database.users.students.find(
+        (s) => s.id === sessionStorage.getItem("currentStudentId"),
+      );
       return student ? student.wallet : 0;
     },
     set: (val) => {
-      const id = sessionStorage.getItem("currentStudentId");
-      const student = database.users.students.find((s) => s.id === id);
-      if (student) {
-        student.wallet = val;
-        database.set(database.config.keys.users, database.users);
-        database.wallet.render();
-      }
-    },
-    render: () => {
-      if (DOM.walletBalance) {
-        DOM.walletBalance.textContent = database.wallet.get();
-      }
-    },
-    deposit: (amt = 50) => {
-      const oldBalance = database.wallet.get();
-      const newBalance = oldBalance + amt;
-      database.wallet.set(newBalance);
-      alert(
-        `Deposit Successful! \n\nAmount deposited: $${amt}\nPrevious balance: $${oldBalance}\nNew balance: $${newBalance}`,
+      const student = database.users.students.find(
+        (s) => s.id === sessionStorage.getItem("currentStudentId"),
       );
-      return newBalance;
+      if (student) {
+        student.wallet = Math.round(val * 100) / 100;
+        database.set(database.config.keys.users, database.users);
+        if (DOM.walletBalance) DOM.walletBalance.textContent = student.wallet;
+        const depositBalance = document.getElementById("walletBalance");
+        if (depositBalance) depositBalance.textContent = student.wallet;
+      }
+    },
+    deposit: (amt) => {
+      if (amt <= 0) return alert("Please enter a valid amount!");
+      let newBalance = database.wallet.get() + amt;
+      newBalance = Math.round(newBalance * 100) / 100;
+      database.wallet.set(newBalance);
+      alert(`Deposited $${amt}! New balance: $${newBalance}`);
+      return true;
     },
   },
-  users: {},
-  rooms: [],
-  bookings: [],
 };
 database.init();
 
-// ===================== REAL-TIME SYNC =====================
-window.addEventListener("storage", (e) => {
-  if (
-    [
-      database.config.keys.bookings,
-      database.config.keys.rooms,
-      database.config.keys.users,
-    ].includes(e.key)
-  ) {
-    database.bookings = database.get(database.config.keys.bookings);
-    database.rooms = database.get(database.config.keys.rooms);
-    database.users = database.get(database.config.keys.users);
-    if (DOM.roomTable) renderRooms();
-    if (DOM.availableRooms) renderAvailableRooms();
-    if (DOM.studentBookings) renderStudentBookings();
-    if (DOM.walletBalance) database.wallet.render();
-  }
-
-  if (e.key === "refundNotification" && e.newValue) {
-    try {
-      const payload = JSON.parse(e.newValue);
-      const currentStudentId = sessionStorage.getItem("currentStudentId");
-      if (
-        payload?.studentIds?.includes(currentStudentId) &&
-        typeof payload.totalAmount === "number"
-      ) {
-        alert(
-          `Your booking for room "${payload.roomName}" was cancelled. $${payload.totalAmount} has been refunded back to your account.`,
-        );
-      }
-    } catch (error) {
-      console.error("Failed to parse refund notification:", error);
-    }
-  }
-});
-
 // ===================== UTILS =====================
-const formatTime = (min) =>
-  `${String(Math.floor(min / 60)).padStart(2, "0")}:${String(min % 60).padStart(2, "0")}`;
-
 const getEndTime = (startTime) => {
-  const [hour, min] = startTime.split(":").map(Number);
-  const totalMin = hour * 60 + min + database.config.slotDuration * 60;
-  return formatTime(totalMin);
+  let [hour, minute] = startTime.split(":").map(Number);
+  let total = hour * 60 + minute + 60;
+  let newHour = Math.floor(total / 60) % 24;
+  let newMinute = total % 60;
+  return `${String(newHour).padStart(2, "0")}:${String(newMinute).padStart(2, "0")}`;
 };
 
 const generateSlots = (start, end) => {
   let [startHour, startMin] = start.split(":").map(Number);
   let [endHour, endMin] = end.split(":").map(Number);
-
   let slots = [];
-  let step = database.config.slotDuration * 60;
-  let currentMin = startHour * 60 + startMin;
-  let finMin = endHour * 60 + endMin;
+  let current = startHour * 60 + startMin;
+  let endTotal = endHour * 60 + endMin;
 
-  // For overnight bookings, add 24 hours to end time
-  let maxMin = finMin;
-  if (finMin <= currentMin) {
-    maxMin = finMin + 24 * 60;
+  // If end time is less than or equal to start time, assume next day
+  if (endTotal <= current) {
+    endTotal += 24 * 60;
   }
 
-  // Generate slots
-  while (currentMin + step <= maxMin) {
-    let displayHour = Math.floor((currentMin % (24 * 60)) / 60);
-    let displayMin = currentMin % 60;
+  while (current + 60 <= endTotal) {
+    let hour = Math.floor(current / 60) % 24;
+    let minute = current % 60;
     slots.push(
-      `${String(displayHour).padStart(2, "0")}:${String(displayMin).padStart(2, "0")}`,
+      `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`,
     );
-    currentMin += step;
+    current += 60;
   }
-
   return slots;
 };
 
-// ===================== LOGIN =====================
+// ===================== LOGIN PAGE =====================
 if (DOM.loginForm) {
   DOM.loginForm.addEventListener("submit", (e) => {
     e.preventDefault();
     const role = DOM.role.value;
     const username = DOM.username.value.trim();
     const password = DOM.password.value.trim();
-
     if (!role) return alert("Please select a role.");
 
-    let account = null;
-    if (role === "staff") {
-      if (
-        username === database.users.staff.username &&
-        password === database.users.staff.password
-      ) {
-        account = database.users.staff;
-      }
-    } else if (role === "student") {
-      account = database.users.students.find(
-        (s) => s.username === username && s.password === password,
-      );
-    }
+    let account =
+      role === "staff"
+        ? username === database.users.staff.username &&
+          password === database.users.staff.password
+          ? database.users.staff
+          : null
+        : database.users.students.find(
+            (s) => s.username === username && s.password === password,
+          );
 
     if (account) {
       sessionStorage.setItem("currentUserRole", role);
@@ -240,301 +210,460 @@ if (DOM.loginForm) {
         sessionStorage.setItem("currentStudentId", account.id);
       window.location.href = database.config.pages[role];
     } else {
-      alert("Invalid username or password for selected role.");
+      alert(
+        "Invalid credentials.\nStaff: admin/admin\nStudent: user1/user1 or user2/user2",
+      );
     }
   });
 }
 
-
-
-// ===================== STAFF =====================
-const updateRooms = () => {
-  database.set(database.config.keys.rooms, database.rooms);
-  renderRooms();
-};
-
-const roomRow = (r, i) => `
-  <tr>
-    <td>${r.name}</td>
-    <td>${r.capacity}</td>
-    <td>${r.price}</td>
-    <td>${r.promo}</td>
-    <td>${r.date}</td>
-    <td>${r.startTime}</td>
-    <td>${r.endTime}</td>
-    <td>${r.status ? "Available" : "Unavailable"}</td>
-    <td>
-      <button data-action="toggle" data-index="${i}">${r.status ? "Unlaunch" : "Launch"}</button>
-      <button data-action="edit" data-index="${i}">Edit</button>
-      <button data-action="delete" data-index="${i}">Delete</button>
-    </td>
-  </tr>`;
-
+// ===================== STAFF PAGE =====================
 const renderRooms = () => {
-  if (DOM.roomTable)
-    DOM.roomTable.innerHTML = database.rooms.map(roomRow).join("");
+  if (!DOM.roomTable) return;
+  DOM.roomTable.innerHTML = database.rooms
+    .map(
+      (r, i) => `
+    <tr>
+      <td>${r.name}</td>
+      <td>${r.capacity}</td>
+      <td>$${r.price}</td>
+      <td>${r.date}</td>
+      <td>${r.startTime}</td>
+      <td>${r.endTime}</td>
+      <td>${r.status ? "Available" : "Unavailable"}</td>
+      <td class="action-buttons">
+        <button data-action="toggle" data-index="${i}">${r.status ? "Unlaunch" : "Launch"}</button>
+        <button data-action="edit" data-index="${i}">Edit</button>
+        <button data-action="delete" data-index="${i}">Delete</button>
+      </td>
+    </tr>
+  `,
+    )
+    .join("");
 };
 
-const notifyRefundedStudents = (roomName, totalAmount, studentIds) => {
-  localStorage.setItem(
-    "refundNotification",
-    JSON.stringify({ roomName, totalAmount, studentIds, timestamp: Date.now() }),
-  );
+const renderPromoCodes = () => {
+  if (!DOM.promoTable) return;
+  DOM.promoTable.innerHTML = database.promoCodes
+    .map(
+      (p, i) => `
+    <tr>
+      <td>${p.code}</td>
+      <td>${p.discount}%</td>
+      <td>${p.validUntil}</td>
+      <td>${p.active ? "Active" : "Inactive"}</td>
+      <td class="action-buttons">
+        <button data-promo-action="toggle" data-promo-index="${i}">${p.active ? "Unlaunch" : "Launch"}</button>
+        <button data-promo-action="edit" data-promo-index="${i}">Edit</button>
+        <button data-promo-action="delete" data-promo-index="${i}">Delete</button>
+      </td>
+    </tr>
+  `,
+    )
+    .join("");
 };
 
-// Refund all bookings for a room when it's unlaunched
 const refundBookingsForRoom = (roomId) => {
-  let currentBookings = database.get(database.config.keys.bookings) || [];
-  const affectedBookings = currentBookings.filter((b) => b.roomId === roomId);
-  if (!affectedBookings.length) return;
-
-  affectedBookings.forEach((booking) => {
-    const student = database.users.students.find((s) => s.id === booking.studentId);
-    if (student) student.wallet += booking.price;
+  let bookings = database.get(database.config.keys.bookings) || [];
+  let affected = bookings.filter((b) => b.roomId === roomId);
+  affected.forEach((b) => {
+    let student = database.users.students.find((s) => s.id === b.studentId);
+    if (student) student.wallet += b.finalPrice || b.originalPrice;
   });
-
-  const room = database.rooms.find((r) => r.id === roomId);
-  const totalAmount = affectedBookings.reduce((sum, booking) => sum + booking.price, 0);
-  const studentIds = [...new Set(affectedBookings.map((b) => b.studentId))];
-  notifyRefundedStudents(room?.name || "Room", totalAmount, studentIds);
-
-  const remainingBookings = currentBookings.filter((b) => b.roomId !== roomId);
-  database.bookings = remainingBookings;
   database.set(database.config.keys.users, database.users);
-  database.set(database.config.keys.bookings, remainingBookings);
+  database.set(
+    database.config.keys.bookings,
+    bookings.filter((b) => b.roomId !== roomId),
+  );
+  database.bookings = database.get(database.config.keys.bookings);
 };
 
+// Staff Event Listeners
 document.addEventListener("click", (e) => {
-  const { action, index } = e.target.dataset || {};
-  if (index === undefined) return;
+  let { action, index, promoAction, promoIndex } = e.target.dataset;
 
-  switch (action) {
-    case "toggle":
-      const room = database.rooms[index];
+  if (index !== undefined) {
+    if (action === "toggle") {
+      let room = database.rooms[index];
       room.status = !room.status;
-      if (!room.status) {
-        refundBookingsForRoom(room.id);
-      }
-      updateRooms();
-      break;
-    case "edit":
+      if (!room.status) refundBookingsForRoom(room.id);
+      database.set(database.config.keys.rooms, database.rooms);
+      renderRooms();
+    } else if (action === "edit") {
       localStorage.setItem("editRoomIndex", index);
-      window.location.href = "form.html";
-      return;
-    case "delete":
-      if (confirm("Delete room?")) {
-        const roomToDelete = database.rooms[index];
-        refundBookingsForRoom(roomToDelete.id);
-        database.rooms.splice(index, 1);
-      }
-      updateRooms();
-      break;
+      window.location.href = "room-form.html";
+    } else if (action === "delete" && confirm("Delete room?")) {
+      refundBookingsForRoom(database.rooms[index].id);
+      database.rooms.splice(index, 1);
+      database.set(database.config.keys.rooms, database.rooms);
+      renderRooms();
+    }
+  }
+
+  if (promoAction === "toggle" && promoIndex !== undefined) {
+    database.promoCodes[promoIndex].active =
+      !database.promoCodes[promoIndex].active;
+    database.set(database.config.keys.promoCodes, database.promoCodes);
+    renderPromoCodes();
+  } else if (promoAction === "edit" && promoIndex !== undefined) {
+    localStorage.setItem("editPromoIndex", promoIndex);
+    window.location.href = "promo-form.html";
+  } else if (
+    promoAction === "delete" &&
+    promoIndex !== undefined &&
+    confirm(`Delete "${database.promoCodes[promoIndex].code}"?`)
+  ) {
+    database.promoCodes.splice(promoIndex, 1);
+    database.set(database.config.keys.promoCodes, database.promoCodes);
+    renderPromoCodes();
   }
 });
 
-// ===================== STAFF Room Form =====================
+// ===================== ROOM FORM PAGE =====================
 if (DOM.roomForm) {
-  const editIndex = localStorage.getItem("editRoomIndex");
-  const room = editIndex !== null ? database.rooms[editIndex] : null;
+  let editIndex = localStorage.getItem("editRoomIndex");
+  let room = editIndex !== null ? database.rooms[parseInt(editIndex)] : null;
 
   if (room) {
     DOM.roomName.value = room.name;
     DOM.capacity.value = room.capacity;
     DOM.price.value = room.price;
-    DOM.promo.value = room.promo;
     DOM.roomDate.value = room.date;
     DOM.roomStartTime.value = room.startTime;
     DOM.roomEndTime.value = room.endTime;
-
     DOM.modalTitle.textContent = "Edit Room";
-    if (DOM.submitBtn) {
-      DOM.submitBtn.textContent = "Edit Room";
-    }
+    if (DOM.submitBtn) DOM.submitBtn.textContent = "Update Room";
   }
 
   DOM.roomForm.addEventListener("submit", (e) => {
     e.preventDefault();
-
-    const roomData = {
-      id: room ? room.id : String(database.rooms.length + 1).padStart(2, "0"),
+    let roomData = {
+      id: room ? room.id : null,
       name: DOM.roomName.value,
       capacity: parseInt(DOM.capacity.value),
       price: parseFloat(DOM.price.value),
-      promo: DOM.promo.value,
       date: DOM.roomDate.value,
       startTime: DOM.roomStartTime.value,
       endTime: DOM.roomEndTime.value,
-      status: room ? room.status : false,
+      status: room ? room.status : true,
     };
+    if (room) database.rooms[editIndex] = roomData;
+    else database.saveRoom(roomData);
+    database.set(database.config.keys.rooms, database.rooms);
+    alert(`"${roomData.name}" ${room ? "updated" : "created"}!`);
+    localStorage.removeItem("editRoomIndex");
+    window.location.href = "staff.html";
+  });
 
-    if (room) {
-      database.rooms[editIndex] = roomData;
-      updateRooms();
-      alert(`"${roomData.name}" has been successfully EDITED!`);
-    } else {
-      database.saveRoom(roomData);
-      updateRooms();
-      alert(`"${roomData.name}" has been successfully CREATED!`);
+  if (DOM.backBtn) {
+    DOM.backBtn.addEventListener("click", () => {
+      localStorage.removeItem("editRoomIndex");
+      window.location.href = "staff.html";
+    });
+  }
+}
+
+// ===================== PROMO FORM PAGE =====================
+if (document.getElementById("promoForm")) {
+  const promoForm = document.getElementById("promoForm");
+  const promoCodeInput = document.getElementById("promoCode");
+  const discountInput = document.getElementById("discount");
+  const validUntilInput = document.getElementById("validUntil");
+  const promoSubmitBtn = document.getElementById("submitBtn");
+  const promoModalTitle = document.getElementById("modalTitle");
+  const promoBackBtn = document.getElementById("backBtn");
+
+  let editIdx = localStorage.getItem("editPromoIndex");
+  let promo = editIdx !== null ? database.promoCodes[parseInt(editIdx)] : null;
+
+  if (promo) {
+    promoCodeInput.value = promo.code;
+    discountInput.value = promo.discount;
+    validUntilInput.value = promo.validUntil;
+    promoModalTitle.textContent = "Edit Promo Code";
+    promoSubmitBtn.textContent = "Update Promo";
+  }
+
+  promoForm.addEventListener("submit", (e) => {
+    e.preventDefault();
+    let data = {
+      code: promoCodeInput.value.toUpperCase(),
+      discount: parseInt(discountInput.value),
+      validUntil: validUntilInput.value,
+      active: true,
+    };
+    if (promo) database.promoCodes[editIdx] = data;
+    else {
+      if (database.promoCodes.some((p) => p.code === data.code))
+        return alert("Code exists!");
+      database.promoCodes.push(data);
     }
-
-    localStorage.removeItem("editRoomIndex");
-    window.location.href = database.config.pages.staff;
+    database.set(database.config.keys.promoCodes, database.promoCodes);
+    alert(`"${data.code}" ${promo ? "updated" : "created"}!`);
+    localStorage.removeItem("editPromoIndex");
+    window.location.href = "staff.html";
   });
+
+  if (promoBackBtn) {
+    promoBackBtn.addEventListener("click", () => {
+      localStorage.removeItem("editPromoIndex");
+      window.location.href = "staff.html";
+    });
+  }
 }
 
-if (DOM.backBtn) {
-  DOM.backBtn.addEventListener("click", () => {
-    localStorage.removeItem("editRoomIndex");
-    window.location.href = database.config.pages.staff;
-  });
-}
-
-// ===================== STUDENT =====================
-const updateBookings = () => {
-  database.bookings = database.get(database.config.keys.bookings);
-  renderStudentBookings();
-  renderAvailableRooms();
-  database.wallet.render();
+// ===================== STUDENT PAGE =====================
+const goToCheckout = (room, slot, endTime) => {
+  sessionStorage.setItem(
+    "checkoutData",
+    JSON.stringify({
+      roomId: room.id,
+      roomName: room.name,
+      date: room.date,
+      slot,
+      endTime,
+      originalPrice: room.price,
+    }),
+  );
+  window.location.href = "checkout.html";
 };
 
-function bookRoom(room, slot) {
-  let currentBookings = database.get(database.config.keys.bookings);
-  const studentId = sessionStorage.getItem("currentStudentId");
-  const balance = database.wallet.get();
-
-  const slotTaken = currentBookings.some(
-    (b) => b.roomId === room.id && b.startTime === slot && b.date === room.date,
-  );
-  if (slotTaken)
-    return alert("This slot has already been booked by another student!");
-
-  if (balance < room.price)
-    return alert("Not enough balance! Please deposit more money.");
-
-  const booking = {
-    id: Date.now(),
-    roomId: room.id,
-    room: room.name,
-    date: room.date,
-    startTime: slot,
-    endTime: getEndTime(slot),
-    price: room.price,
-    studentId,
-  };
-
-  currentBookings.push(booking);
-  database.set(database.config.keys.bookings, currentBookings);
-  database.bookings = currentBookings;
-  database.wallet.set(balance - room.price);
-
-  alert(
-    `Booking successful! $${room.price} has been deducted from your wallet.`,
-  );
-  updateBookings();
-}
-
 const renderAvailableRooms = () => {
-  if (!DOM.availableRooms) return;
+  if (!DOM.roomsContainer) return;
+  let bookings = database.get(database.config.keys.bookings) || [];
+  let available = database.rooms.filter((r) => r.status);
 
-  const currentBookings = database.get(database.config.keys.bookings);
-  database.bookings = currentBookings;
-  const available = database.rooms.filter((r) => r.status);
+  if (!available.length) {
+    DOM.roomsContainer.innerHTML =
+      '<div class="room-card">No rooms available</div>';
+    return;
+  }
 
-  DOM.availableRooms.innerHTML = available.length
-    ? available
-        .map((r) => {
-          const slots = generateSlots(r.startTime, r.endTime);
-          return `
-          <tr>
-            <td>${r.name}</td>
-            <td>${r.capacity}</td>
-            <td>${r.price}</td>
-            <td>${r.date}</td>
-            <td>
-              ${slots
-                .map((s) => {
-                  const isBooked = currentBookings.some(
-                    (b) =>
-                      b.roomId === r.id &&
-                      b.startTime === s &&
-                      b.date === r.date,
-                  );
-                  return `<button data-action="book" data-roomid="${r.id}" data-slot="${s}" ${isBooked ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : ""}>${s} - ${getEndTime(s)}</button>`;
-                })
-                .join(" ")}
-            </td>
-          </tr>`;
-        })
-        .join("")
-    : `<tr><td colspan="5">No rooms available</td></tr>`;
+  DOM.roomsContainer.innerHTML = available
+    .map((room) => {
+      let slots = generateSlots(room.startTime, room.endTime);
+      return `
+      <div class="room-card">
+        <div class="room-header">
+          <div class="room-title"><h3>${room.name}</h3><div class="room-meta"><span>${room.capacity} pax</span><span>${room.date}</span></div></div>
+          <div class="room-price-box"><div class="price">$${room.price}</div><div class="price-label">per hour</div></div>
+        </div>
+        <div class="slots-section">
+          <div class="slots-title">Available Time Slots</div>
+          <div class="slots-grid">
+            ${slots
+              .map((slot) => {
+                let endTime = getEndTime(slot);
+                let isBooked = bookings.some(
+                  (b) =>
+                    b.roomId === room.id &&
+                    b.startTime === slot &&
+                    b.date === room.date,
+                );
+                return `<button class="slot-btn ${isBooked ? "booked" : ""}" data-roomid="${room.id}" data-slot="${slot}" data-endtime="${endTime}" ${isBooked ? "disabled" : ""}>${slot} - ${endTime}</button>`;
+              })
+              .join("")}
+          </div>
+        </div>
+      </div>
+    `;
+    })
+    .join("");
+
+  document.querySelectorAll(".slot-btn:not(.booked)").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      let room = database.rooms.find((r) => r.id === btn.dataset.roomid);
+      if (room) goToCheckout(room, btn.dataset.slot, btn.dataset.endtime);
+    });
+  });
 };
 
 const renderStudentBookings = () => {
   if (!DOM.studentBookings) return;
-
-  const studentId = sessionStorage.getItem("currentStudentId");
-  const myBookings = database.bookings.filter((b) => b.studentId === studentId);
+  let studentId = sessionStorage.getItem("currentStudentId");
+  let myBookings = (database.bookings || []).filter(
+    (b) => b.studentId === studentId,
+  );
 
   DOM.studentBookings.innerHTML = myBookings.length
     ? myBookings
         .map(
           (b, i) => `
-        <tr>
-          <td>${b.room}</td>
-          <td>${b.date}</td>
-          <td>${b.startTime}</td>
-          <td>${b.endTime}</td>
-          <td>${b.price}</td>
-          <td><button data-action="cancel" data-index="${i}">Cancel</button></td>
-        </tr>`,
+    <tr>
+      <td>${b.room}</td>
+      <td>${b.date}</td>
+      <td>${b.startTime}</td>
+      <td>${b.endTime}</td>
+      <td>$${b.originalPrice}</td>
+      <td>${b.discountPercent > 0 ? `${b.discountPercent}%` : "None"}</td>
+      <td>$${(b.finalPrice || b.originalPrice).toFixed(2)}</td>
+      <td><button data-cancel="${i}">Cancel</button></td>
+    </tr>
+  `,
         )
         .join("")
-    : `<tr><td colspan="6">No bookings yet</td></tr>`;
+    : '<tr><td colspan="8">No bookings yet</td></tr>';
+
+  document.querySelectorAll("[data-cancel]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      let idx = parseInt(btn.dataset.cancel);
+      let allBookings = database.get(database.config.keys.bookings) || [];
+      let booking = allBookings.filter((b) => b.studentId === studentId)[idx];
+      if (booking && confirm("Cancel this booking?")) {
+        let refund = booking.finalPrice || booking.originalPrice;
+        database.set(
+          database.config.keys.bookings,
+          allBookings.filter((b) => b.id !== booking.id),
+        );
+        database.bookings = database.get(database.config.keys.bookings);
+        database.wallet.set(database.wallet.get() + refund);
+        alert(`Cancelled! Refunded $${refund.toFixed(2)}`);
+        renderAvailableRooms();
+        renderStudentBookings();
+      }
+    });
+  });
 };
 
-document.addEventListener("click", (e) => {
-  const { action, roomid, slot, index } = e.target.dataset || {};
+// ===================== DEPOSIT PAGE =====================
+if (DOM.customDepositBtn) {
+  const updateBalance = () => {
+    if (DOM.walletBalance)
+      DOM.walletBalance.textContent = database.wallet.get();
+  };
+  updateBalance();
 
-  if (action === "deposit") {
-    const amount = Number(e.target.dataset.amount || 50);
-    if ([10, 25, 50].includes(amount)) {
-      database.wallet.deposit(amount);
-    } else {
-      alert("Invalid deposit amount.");
+  DOM.customDepositBtn.addEventListener("click", () => {
+    let amount = parseInt(DOM.customAmount.value);
+    if (isNaN(amount) || amount <= 0)
+      return alert("Please enter a valid positive amount!");
+    database.wallet.deposit(amount);
+    updateBalance();
+    DOM.customAmount.value = "";
+  });
+}
+
+// ===================== CHECKOUT PAGE =====================
+if (DOM.confirmBookingBtn) {
+  const loadCheckoutPage = () => {
+    let data = sessionStorage.getItem("checkoutData");
+    if (!data) {
+      alert("No booking selected.");
+      window.location.href = "student.html";
+      return;
     }
-  }
+    let booking = JSON.parse(data);
 
-  if (action === "book") {
-    const room = database.rooms.find((r) => r.id === roomid);
-    if (room) bookRoom(room, slot);
-  }
+    if (DOM.summaryRoomName) DOM.summaryRoomName.textContent = booking.roomName;
+    if (DOM.summaryDate) DOM.summaryDate.textContent = booking.date;
+    if (DOM.summarySlot) DOM.summarySlot.textContent = booking.slot;
+    if (DOM.summaryEndTime) DOM.summaryEndTime.textContent = booking.endTime;
+    if (DOM.summaryOriginalPrice)
+      DOM.summaryOriginalPrice.textContent = booking.originalPrice;
+    if (DOM.displayOriginalPrice)
+      DOM.displayOriginalPrice.textContent = booking.originalPrice;
+    if (DOM.finalPriceEl) DOM.finalPriceEl.textContent = booking.originalPrice;
 
-  if (action === "cancel") {
-    let currentBookings = database.get(database.config.keys.bookings);
-    const studentId = sessionStorage.getItem("currentStudentId");
-    const myBookings = currentBookings.filter((b) => b.studentId === studentId);
-    const cancelledBooking = myBookings[index];
+    let appliedDiscount = 0,
+      finalPrice = booking.originalPrice;
 
-    if (cancelledBooking) {
-      const bookingIndex = currentBookings.findIndex(
-        (b) => b.id === cancelledBooking.id,
-      );
-      if (bookingIndex !== -1) {
-        currentBookings.splice(bookingIndex, 1);
-        database.set(database.config.keys.bookings, currentBookings);
-        database.bookings = currentBookings;
-        database.wallet.set(database.wallet.get() + cancelledBooking.price);
-        alert(
-          `Booking cancelled! Refunded $${cancelledBooking.price} to your wallet`,
+    if (DOM.applyPromoBtn) {
+      DOM.applyPromoBtn.addEventListener("click", () => {
+        let code = DOM.promoCodeInput.value.toUpperCase();
+        let promo = database.promoCodes.find(
+          (p) =>
+            p.code === code &&
+            p.active &&
+            p.validUntil >= new Date().toISOString().split("T")[0],
         );
-        updateBookings();
-      }
+        if (promo) {
+          appliedDiscount = promo.discount;
+          finalPrice =
+            Math.round(
+              booking.originalPrice * (1 - appliedDiscount / 100) * 100,
+            ) / 100;
+          if (DOM.discountPercent)
+            DOM.discountPercent.textContent = appliedDiscount;
+          if (DOM.discountAmount)
+            DOM.discountAmount.textContent = (
+              booking.originalPrice - finalPrice
+            ).toFixed(2);
+          if (DOM.finalPriceEl)
+            DOM.finalPriceEl.textContent = finalPrice.toFixed(2);
+          if (DOM.discountRow) DOM.discountRow.style.display = "block";
+          if (DOM.promoMessage)
+            DOM.promoMessage.innerHTML = `<span class="success">${promo.code} applied! You save $${(booking.originalPrice - finalPrice).toFixed(2)}!</span>`;
+        } else {
+          if (DOM.promoMessage)
+            DOM.promoMessage.innerHTML = `<span class="error">Invalid or expired promo code.</span>`;
+        }
+      });
     }
-  }
-});
+
+    if (DOM.confirmBookingBtn) {
+      DOM.confirmBookingBtn.addEventListener("click", () => {
+        let bookings = database.get(database.config.keys.bookings);
+        let studentId = sessionStorage.getItem("currentStudentId");
+        let balance = database.wallet.get();
+        finalPrice = Math.round(finalPrice * 100) / 100;
+
+        if (
+          bookings.some(
+            (b) =>
+              b.roomId === booking.roomId &&
+              b.startTime === booking.slot &&
+              b.date === booking.date,
+          )
+        ) {
+          alert("❌ Slot already booked!");
+          sessionStorage.removeItem("checkoutData");
+          window.location.href = "student.html";
+          return;
+        }
+        if (balance < finalPrice) {
+          alert(
+            `❌ Need $${finalPrice.toFixed(2)}, have $${balance.toFixed(2)}`,
+          );
+          return;
+        }
+
+        bookings.push({
+          id: Date.now(),
+          roomId: booking.roomId,
+          room: booking.roomName,
+          date: booking.date,
+          startTime: booking.slot,
+          endTime: booking.endTime,
+          originalPrice: booking.originalPrice,
+          finalPrice,
+          discountPercent: appliedDiscount,
+          promoCodeUsed:
+            appliedDiscount > 0 ? DOM.promoCodeInput.value.toUpperCase() : null,
+          studentId,
+        });
+        database.set(database.config.keys.bookings, bookings);
+        database.wallet.set(balance - finalPrice);
+        alert(
+          `Booked! Paid $${finalPrice.toFixed(2)}${appliedDiscount > 0 ? ` Saved $${(booking.originalPrice - finalPrice).toFixed(2)}` : ""}`,
+        );
+        sessionStorage.removeItem("checkoutData");
+        window.location.href = "student.html";
+      });
+    }
+
+    if (DOM.cancelCheckoutBtn) {
+      DOM.cancelCheckoutBtn.addEventListener("click", () => {
+        sessionStorage.removeItem("checkoutData");
+        window.location.href = "student.html";
+      });
+    }
+  };
+  loadCheckoutPage();
+}
 
 // ===================== INITIAL RENDER =====================
 if (DOM.roomTable) renderRooms();
-if (DOM.availableRooms) renderAvailableRooms();
+if (DOM.promoTable) renderPromoCodes();
+if (DOM.roomsContainer) renderAvailableRooms();
 if (DOM.studentBookings) renderStudentBookings();
-if (DOM.walletBalance) database.wallet.render();
+if (DOM.walletBalance) DOM.walletBalance.textContent = database.wallet.get();
